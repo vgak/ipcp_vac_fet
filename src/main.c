@@ -497,7 +497,7 @@ static void *worker(void *a)
 		"# 1: index\n"
 		"# 2: time, s\n"
 		"# 3: Vg, V\n"
-		"# 4: Id, V\n"
+		"# 4: Id, A\n"
 		"# 5: pps:ch1 voltage, V\n"
 		"# 7: pps:ch1 current, A\n"
 		"# 6: pps:ch2 voltage, V\n"
