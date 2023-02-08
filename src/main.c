@@ -351,6 +351,8 @@ int main(int argc, char const *argv[])
 	pthread_cancel(t_commander);
 	pthread_join(t_commander, NULL);
 
+	fprintf(stdout, "\r\n");
+
 	main_exit:
 	return ret;
 }
@@ -366,7 +368,7 @@ static void *commander(void *a)
 
 	while(get_run())
 	{
-		printf("> ");
+		fprintf(stdout, "> ");
 
 		s = fgets(str, 100, stdin);
 		if (s == NULL)
@@ -545,7 +547,7 @@ static void *worker(void *a)
 		"set xrange [%le:%le]\n"
 		"set xlabel \"Vg, V\"\n"
 		"set ylabel \"Id, A\"\n"
-		"set format y \"%%.0s%%c\"\n",
+		"set format y \"%%.3s%%c\"\n",
 		arg.Vg_start,
 		arg.Vg_stop
 	);
@@ -667,6 +669,12 @@ static void *worker(void *a)
 	gpib_write(pps_fd, "output 0");
 
 	gpib_write(pps_fd, "system:beeper");
+
+	r = fprintf(gp, "exit;\n");
+	if(r < 0)
+	{
+		fprintf(stderr, "# E: Unable to print to gp (%s)\n", strerror(r));
+	}
 
 	worker_gp_settings:
 
