@@ -176,8 +176,16 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 // === [GPIB] ===
-#define PPS_GPIB_NAME "AKIP-1142/3G"
-#define VM_GPIB_NAME "AKIP-V7-78/1"
+// #define PPS_GPIB_NAME "AKIP-1142/3G"
+// #define VM_GPIB_NAME "AKIP-V7-78/1"
+
+#ifdef DEV_AKIP_TMC
+	#define PPS_NAME "/dev/usbtmc_1142_3g"
+	#define VM_NAME "/dev/usbtmc_v7_78_1"
+#else
+	#define PPS_NAME "AKIP-1142/3G"
+	#define VM_NAME "AKIP-V7-78/1"
+#endif
 
 // === [SOURCE] ===
 #define VG_START 0.0
@@ -246,6 +254,20 @@ static void *worker(void *);
 static int get_run();
 static void set_run(int run_new);
 static double get_time();
+
+#ifdef DEV_AKIP_TMC
+	#define dev_open  usbtmc_open
+	#define dev_close usbtmc_close
+	#define dev_read  usbtmc_read
+	#define dev_write usbtmc_write
+	#define dev_print usbtmc_print
+#else
+	#define dev_open  gpib_open
+	#define dev_close gpib_close
+	#define dev_read  gpib_read
+	#define dev_write gpib_write
+	#define dev_print gpib_print
+#endif
 
 // === global variables
 static char dir_str[200];
@@ -427,7 +449,7 @@ static void *worker(void *a)
 
 	int new_V_range;
 
-	r = gpib_open(PPS_GPIB_NAME);
+	r = dev_open(PPS_NAME);
 	if(r == -1)
 	{
 		fprintf(stderr, "# E: Unable to open power supply (%d)\n", r);
@@ -435,7 +457,7 @@ static void *worker(void *a)
 	}
 	pps_fd = r;
 
-	r = gpib_open(VM_GPIB_NAME);
+	r = dev_open(VM_NAME);
 	if(r == -1)
 	{
 		fprintf(stderr, "# E: Unable to open voltmeter (%d)\n", r);
@@ -444,32 +466,32 @@ static void *worker(void *a)
 	vm_fd = r;
 
 	// === init pps
-	gpib_write(pps_fd, "output 0");
-	gpib_write(pps_fd, "instrument:nselect 1");
-	gpib_print(pps_fd, "voltage:limit %.1lfV", 60.1);
-	gpib_print(pps_fd, "voltage %.3lf", arg.Vd);
-	gpib_print(pps_fd, "current %.3lf", arg.Id_max);
-	gpib_write(pps_fd, "instrument:nselect 2");
-	gpib_print(pps_fd, "voltage:limit %.1lfV", 60.1);
-	gpib_print(pps_fd, "voltage %.3lf", arg.Vg_start);
-	gpib_print(pps_fd, "current %.3lf", arg.Ig_max);
-	gpib_write(pps_fd, "instrument:nselect 1");
-	gpib_write(pps_fd, "channel:output 1");
-	gpib_write(pps_fd, "instrument:nselect 2");
-	gpib_write(pps_fd, "channel:output 1");
+	dev_write(pps_fd, "output 0");
+	dev_write(pps_fd, "instrument:nselect 1");
+	dev_print(pps_fd, "voltage:limit %.1lfV", 60.1);
+	dev_print(pps_fd, "voltage %.3lf", arg.Vd);
+	dev_print(pps_fd, "current %.3lf", arg.Id_max);
+	dev_write(pps_fd, "instrument:nselect 2");
+	dev_print(pps_fd, "voltage:limit %.1lfV", 60.1);
+	dev_print(pps_fd, "voltage %.3lf", arg.Vg_start);
+	dev_print(pps_fd, "current %.3lf", arg.Ig_max);
+	dev_write(pps_fd, "instrument:nselect 1");
+	dev_write(pps_fd, "channel:output 1");
+	dev_write(pps_fd, "instrument:nselect 2");
+	dev_write(pps_fd, "channel:output 1");
 	// gpib_print_error(pps_fd);
 
 	// === init vm
-	gpib_write(vm_fd, "function \"voltage:dc\"");
-	gpib_write(vm_fd, "voltage:dc:range:auto off");
-	gpib_write(vm_fd, "voltage:dc:range 0.1");
-	gpib_write(vm_fd, "voltage:dc:nplcycles 10");
-	gpib_write(vm_fd, "trigger:source immediate");
-	gpib_write(vm_fd, "trigger:delay:auto off");
-	gpib_write(vm_fd, "trigger:delay 0");
-	gpib_write(vm_fd, "trigger:count 1");
-	gpib_write(vm_fd, "sample:count 1");
-	gpib_write(vm_fd, "sense:zero:auto on");
+	dev_write(vm_fd, "function \"voltage:dc\"");
+	dev_write(vm_fd, "voltage:dc:range:auto off");
+	dev_write(vm_fd, "voltage:dc:range 0.1");
+	dev_write(vm_fd, "voltage:dc:nplcycles 10");
+	dev_write(vm_fd, "trigger:source immediate");
+	dev_write(vm_fd, "trigger:delay:auto off");
+	dev_write(vm_fd, "trigger:delay 0");
+	dev_write(vm_fd, "trigger:count 1");
+	dev_write(vm_fd, "sample:count 1");
+	dev_write(vm_fd, "sense:zero:auto on");
 	// gpib_print_error(vm_fd);
 
 	// === create vac file
@@ -570,7 +592,7 @@ static void *worker(void *a)
 		}
 
 		snprintf(buf, 300, "voltage %.3lf", voltage);
-		gpib_write(pps_fd, buf);
+		dev_write(pps_fd, buf);
 
 		usleep(arg.Tms * 1e3);
 
@@ -582,16 +604,16 @@ static void *worker(void *a)
 			break;
 		}
 
-		gpib_write(pps_fd, "measure:voltage:all?");
-		gpib_read(pps_fd, buf, 300);
+		dev_write(pps_fd, "measure:voltage:all?");
+		dev_read(pps_fd, buf, 300);
 		sscanf(buf, "%lf, %lf", &pps_voltage1, &pps_voltage2);
 
-		gpib_write(pps_fd, "measure:current:all?");
-		gpib_read(pps_fd, buf, 300);
+		dev_write(pps_fd, "measure:current:all?");
+		dev_read(pps_fd, buf, 300);
 		sscanf(buf, "%lf, %lf", &pps_current1, &pps_current2);
 
-		gpib_write(vm_fd, "read?");
-		gpib_read(vm_fd, buf, 300);
+		dev_write(vm_fd, "read?");
+		dev_read(vm_fd, buf, 300);
 		vm_voltage = atof(buf);
 
 		vac_voltage = pps_voltage2;
@@ -645,16 +667,16 @@ static void *worker(void *a)
 			switch(V_range)
 			{
 				case V_100mV:
-					gpib_write(vm_fd, "voltage:dc:range 0.1");
+					dev_write(vm_fd, "voltage:dc:range 0.1");
 					break;
 				case V_1V:
-					gpib_write(vm_fd, "voltage:dc:range 1");
+					dev_write(vm_fd, "voltage:dc:range 1");
 					break;
 				case V_10V:
-					gpib_write(vm_fd, "voltage:dc:range 10");
+					dev_write(vm_fd, "voltage:dc:range 10");
 					break;
 				case V_100V:
-					gpib_write(vm_fd, "voltage:dc:range 100");
+					dev_write(vm_fd, "voltage:dc:range 100");
 					break;
 			}
 		}
@@ -662,13 +684,13 @@ static void *worker(void *a)
 		vac_index++;
 	}
 
-	gpib_write(pps_fd, "instrument:nselect 1");
-	gpib_write(pps_fd, "voltage 0");
-	gpib_write(pps_fd, "instrument:nselect 2");
-	gpib_write(pps_fd, "voltage 0");
-	gpib_write(pps_fd, "output 0");
+	dev_write(pps_fd, "instrument:nselect 1");
+	dev_write(pps_fd, "voltage 0");
+	dev_write(pps_fd, "instrument:nselect 2");
+	dev_write(pps_fd, "voltage 0");
+	dev_write(pps_fd, "output 0");
 
-	gpib_write(pps_fd, "system:beeper");
+	dev_write(pps_fd, "system:beeper");
 
 	r = fprintf(gp, "exit;\n");
 	if(r < 0)
@@ -695,10 +717,10 @@ static void *worker(void *a)
 	}
 	worker_vac_fopen:
 
-	gpib_close(vm_fd);
+	dev_close(vm_fd);
 	worker_vm_ibfind:
 
-	gpib_close(pps_fd);
+	dev_close(pps_fd);
 	worker_pps_ibfind:
 
 	return NULL;

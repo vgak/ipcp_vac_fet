@@ -7,6 +7,8 @@
 #include <gpib/ib.h>
 #include "gpib.h"
 
+// === GPIB ===
+
 int gpib_open(const char *name)
 {
 	int r;
@@ -119,4 +121,81 @@ void gpib_print_error(int dev)
 	gpib_write(dev, "system:error?");
 	gpib_read(dev, buf, 100);
 	fprintf(stderr, "# [debug] error = %s\n", buf);
+}
+
+// === USBTMC ===
+
+int usbtmc_open(const char *name)
+{
+	int r;
+
+	r = open(name, O_RDWR);
+	if (r == -1)
+	{
+		fprintf(stderr, "# E: unable to open usbtmc \"%s\" (%s)\n", name, strerror(errno));
+	}
+
+	return r;
+}
+
+int usbtmc_close(int dev)
+{
+	int r;
+
+	usbtmc_write(dev, "*rst");
+
+	r = close(dev);
+	if (r == -1)
+	{
+		fprintf(stderr, "# E: unable to close usbtmc (%s)\n", strerror(errno));
+	}
+
+	return r;
+}
+
+int usbtmc_write(int dev, const char *str)
+{
+	int r;
+
+	r = write(dev, str, strlen(str));
+	if (r == -1)
+	{
+		fprintf(stderr, "# E: unable to write to usbtmc \"%s\" (%s)\n", str, strerror(errno));
+	}
+
+	return r;
+}
+
+int usbtmc_read(int dev, char *buf, size_t buf_length)
+{
+	int r;
+
+	r = read(dev, buf, buf_length);
+	if (r == -1)
+	{
+		fprintf(stderr, "# E: unable to read from usbtmc (%s)\n", strerror(errno));
+	}
+
+	return r;
+}
+
+int usbtmc_print(int dev, const char *format, ...)
+{
+	int r;
+	va_list args;
+	char buf[100];
+	const size_t bufsize = 100;
+
+	va_start(args, format);
+	r = vsnprintf(buf, bufsize, format, args);
+	if (r < 0)
+	{
+		fprintf(stderr, "# E: unable to printf to buffer (%s)\n", strerror(errno));
+		goto usbtmc_print_vsnprintf;
+	}
+	r = usbtmc_write(dev, buf);
+	usbtmc_print_vsnprintf:
+	va_end(args);
+
+	return r;
 }
