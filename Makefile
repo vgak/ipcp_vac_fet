@@ -13,7 +13,8 @@ OBJS = $(SOURCES_S:.s=.o) $(SOURCES_C:.c=.o)
 
 # Includes and Defines
 INCLUDES = -Isrc
-DEFINES =
+# DEFINES =
+DEFINES = -DDEV_AKIP_TMC
 
 # Compiler/Assembler/Linker/etc
 CC = gcc

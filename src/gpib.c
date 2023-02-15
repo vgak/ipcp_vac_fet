@@ -154,19 +154,6 @@ int usbtmc_close(int dev)
 	return r;
 }
 
-int usbtmc_write(int dev, const char *str)
-{
-	int r;
-
-	r = write(dev, str, strlen(str));
-	if (r == -1)
-	{
-		fprintf(stderr, "# E: unable to write to usbtmc \"%s\" (%s)\n", str, strerror(errno));
-	}
-
-	return r;
-}
-
 int usbtmc_read(int dev, char *buf, size_t buf_length)
 {
 	int r;
@@ -175,6 +162,19 @@ int usbtmc_read(int dev, char *buf, size_t buf_length)
 	if (r == -1)
 	{
 		fprintf(stderr, "# E: unable to read from usbtmc (%s)\n", strerror(errno));
+	}
+
+	return r;
+}
+
+int usbtmc_write(int dev, const char *str)
+{
+	int r;
+
+	r = write(dev, str, strlen(str));
+	if (r == -1)
+	{
+		fprintf(stderr, "# E: unable to write to usbtmc \"%s\" (%s)\n", str, strerror(errno));
 	}
 
 	return r;
